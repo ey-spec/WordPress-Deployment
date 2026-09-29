@@ -1,6 +1,6 @@
 services:
   db:
-    image: mysql:latest
+    image: mysql:8.0.46
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: wordpress
