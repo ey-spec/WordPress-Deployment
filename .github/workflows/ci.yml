@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: ci_throwaway_password
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose file
+        run: docker compose config -q
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Smoke test (wait for WordPress)
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 || true)
+            if [ "$code" = "200" ] || [ "$code" = "302" ]; then echo "Up ($code)"; exit 0; fi
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
