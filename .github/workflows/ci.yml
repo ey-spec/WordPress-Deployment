@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 on:
   push:
     branches: [main]
@@ -31,3 +31,24 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  deploy:
+    needs: validate-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+      - name: Deploy
+        working-directory: /home/eyadhatem/WordPress-Deployment
+        run: |
+          git pull --ff-only
+          docker compose pull
+          docker compose up -d
+
+      - name: Verify deployment
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 || true)
+            if [ "$code" = "200" ] || [ "$code" = "302" ]; then echo "Deployed ($code)"; exit 0; fi
+            sleep 5
+          done
+          exit 1
